@@ -23,6 +23,7 @@ import android.os.Looper;
 import android.view.View;
 import android.view.WindowInsetsController;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -30,9 +31,9 @@ import android.widget.TextView;
 public class MainActivity extends Activity {
     static final String CHANNEL = "notification_examples";
     static final int PROGRESS = 101, MEDIA = 102, TIMER = 103, CALL = 104,
-            MESSAGE = 105, TEXT = 106, PICTURE = 107;
+            MESSAGE = 105, TEXT = 106, PICTURE = 107, PROGRESS_FINE = 108;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private int progressRun = 0;
+    private int progressRun = 0, fineProgressRun = 0;
     private TextView status;
     private static MediaSession mediaSession;
     private static boolean playing;
@@ -56,14 +57,36 @@ public class MainActivity extends Activity {
         status.setText("点按按钮后，下拉通知栏查看效果。每种示例使用独立通知 ID。");
         status.setTextSize(15); status.setPadding(0, dp(10), 0, dp(16));
         list.addView(status);
-        button(list, "进度条 · 自动从 0% 到 100%", this::showProgress);
+        ImageView iconPreview = new ImageView(this);
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(dp(72), dp(72));
+        previewParams.bottomMargin = dp(8);
+        list.addView(iconPreview, previewParams);
+        Bitmap currentIcon = RandomNotificationIcon.current(this);
+        if (currentIcon == null) iconPreview.setImageResource(R.drawable.ic_launcher);
+        else iconPreview.setImageBitmap(currentIcon);
+        Button generateIcon = new Button(this);
+        generateIcon.setText("生成随机通知图标"); generateIcon.setAllCaps(false);
+        LinearLayout.LayoutParams iconButtonParams = new LinearLayout.LayoutParams(-1, dp(54));
+        iconButtonParams.bottomMargin = dp(5);
+        list.addView(generateIcon, iconButtonParams);
+        generateIcon.setOnClickListener(v -> {
+            iconPreview.setImageBitmap(RandomNotificationIcon.generate(this));
+            status.setText("已生成随机图标。之后发送的通知会使用它作为大图标。");
+        });
+        TextView iconHint = new TextView(this);
+        iconHint.setText("随机图标用于通知大图标；桌面图标保持固定。生成后再发送通知即可测试取色。");
+        iconHint.setTextSize(13);
+        iconHint.setPadding(0, 0, 0, dp(14));
+        list.addView(iconHint);
+        button(list, "进度条 · 每次增加 10%", () -> showProgress(10, PROGRESS));
+        button(list, "进度条 · 每次增加 1%", () -> showProgress(1, PROGRESS_FINE));
         button(list, "播放器 · 播放 / 暂停 / 下一首", () -> showMedia(this, false));
         button(list, "倒计时 · 60 秒", this::showTimer);
         button(list, "来电 · 接听 / 拒接", this::showCall);
         button(list, "聊天消息 · 多条会话", this::showMessage);
         button(list, "长文本 · 展开查看", this::showText);
         button(list, "大图片 · 展开查看", this::showPicture);
-        button(list, "清除所有示例", () -> { progressRun++; manager.cancelAll(); status.setText("已清除示例通知"); });
+        button(list, "清除所有示例", () -> { progressRun++; fineProgressRun++; manager.cancelAll(); status.setText("已清除示例通知"); });
         setContentView(scroll);
         getWindow().getDecorView().post(() -> {
             if (Build.VERSION.SDK_INT >= 30) {
@@ -95,8 +118,12 @@ public class MainActivity extends Activity {
         });
     }
     static Notification.Builder base(Context c, String title, String text) {
-        return new Notification.Builder(c, CHANNEL).setSmallIcon(R.drawable.ic_notification)
+        Notification.Builder builder = new Notification.Builder(c, CHANNEL)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title).setContentText(text).setAutoCancel(false);
+        Bitmap icon = RandomNotificationIcon.current(c);
+        if (icon != null) builder.setLargeIcon(icon);
+        return builder;
     }
     static void post(Context c, int id, Notification n) {
         ((NotificationManager)c.getSystemService(NOTIFICATION_SERVICE)).notify(id, n);
@@ -105,16 +132,17 @@ public class MainActivity extends Activity {
         Intent i = new Intent(c, DemoReceiver.class).setAction(name);
         return PendingIntent.getBroadcast(c, request, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
-    private void showProgress() {
-        int run = ++progressRun;
-        for (int value = 0; value <= 100; value += 10) {
+    private void showProgress(int step, int notificationId) {
+        int run = step == 1 ? ++fineProgressRun : ++progressRun;
+        for (int value = 0; value <= 100; value += step) {
             final int v = value;
             handler.postDelayed(() -> {
-                if (run != progressRun) return;
-                Notification.Builder b = base(this, "文件下载演示", v == 100 ? "下载完成" : "已完成 " + v + "%")
+                if (run != (step == 1 ? fineProgressRun : progressRun)) return;
+                Notification.Builder b = base(this, step == 1 ? "精细下载演示" : "文件下载演示",
+                        v == 100 ? "下载完成" : "已完成 " + v + "%")
                         .setProgress(100, v, false).setOnlyAlertOnce(true);
                 if (v < 100) b.setOngoing(true); else b.setProgress(0, 0, false);
-                post(this, PROGRESS, b.build());
+                post(this, notificationId, b.build());
             }, value * 100L);
         }
     }

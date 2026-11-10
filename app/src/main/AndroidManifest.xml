@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <application android:label="通知实验室" android:icon="@drawable/ic_notification"
+    <application android:label="通知实验室" android:icon="@drawable/ic_launcher"
         android:theme="@style/Theme.NotificationDemo" android:allowBackup="false">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
