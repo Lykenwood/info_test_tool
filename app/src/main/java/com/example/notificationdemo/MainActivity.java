@@ -34,7 +34,7 @@ public class MainActivity extends Activity {
     static final int PROGRESS = 101, MEDIA = 102, TIMER = 103, CALL = 104,
             MESSAGE = 105, TEXT = 106, PICTURE = 107, PROGRESS_FINE = 108;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private int progressRun = 0, fineProgressRun = 0;
+    private int progressRun = 0;
     private TextView status;
     private static MediaSession mediaSession;
     private static boolean playing;
@@ -80,14 +80,20 @@ public class MainActivity extends Activity {
         iconHint.setPadding(0, 0, 0, dp(14));
         list.addView(iconHint);
         button(list, "进度条 · 每次增加 10%", () -> showProgress(10, PROGRESS));
-        button(list, "进度条 · 1% 步进（每秒一次）", () -> showProgress(1, PROGRESS_FINE));
+        button(list, "进度条 · 1% 步进（每秒一次）", () ->
+                startForegroundService(new Intent(this, FineProgressService.class)));
         button(list, "播放器 · 播放 / 暂停 / 下一首", () -> showMedia(this, false));
         button(list, "倒计时 · 60 秒", this::showTimer);
         button(list, "来电 · 接听 / 拒接", this::showCall);
         button(list, "聊天消息 · 多条会话", this::showMessage);
         button(list, "长文本 · 展开查看", this::showText);
         button(list, "大图片 · 展开查看", this::showPicture);
-        button(list, "清除所有示例", () -> { progressRun++; fineProgressRun++; manager.cancelAll(); status.setText("已清除示例通知"); });
+        button(list, "清除所有示例", () -> {
+            progressRun++;
+            stopService(new Intent(this, FineProgressService.class));
+            manager.cancelAll();
+            status.setText("已清除示例通知");
+        });
         setContentView(scroll);
         getWindow().getDecorView().post(() -> {
             if (Build.VERSION.SDK_INT >= 30) {
@@ -134,14 +140,14 @@ public class MainActivity extends Activity {
         return PendingIntent.getBroadcast(c, request, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
     private void showProgress(int step, int notificationId) {
-        int run = step == 1 ? ++fineProgressRun : ++progressRun;
+        int run = ++progressRun;
         long intervalMs = 1000L;
         Notification.Builder builder = base(this, step == 1 ? "精细下载演示" : "文件下载演示", "已完成 0%")
                 .setOnlyAlertOnce(true);
         Runnable update = new Runnable() {
             int value;
             @Override public void run() {
-                if (run != (step == 1 ? fineProgressRun : progressRun)) return;
+                if (run != progressRun) return;
                 long nextAt = SystemClock.uptimeMillis() + intervalMs;
                 builder.setContentText(value == 100 ? "下载完成" : "已完成 " + value + "%")
                         .setProgress(100, value, false).setOngoing(value < 100);
