@@ -80,7 +80,7 @@ public class MainActivity extends Activity {
         iconHint.setPadding(0, 0, 0, dp(14));
         list.addView(iconHint);
         button(list, "进度条 · 每次增加 10%", () -> showProgress(10, PROGRESS));
-        button(list, "进度条 · 1% 步进（约 25 秒）", () -> showProgress(1, PROGRESS_FINE));
+        button(list, "进度条 · 1% 步进（每秒一次）", () -> showProgress(1, PROGRESS_FINE));
         button(list, "播放器 · 播放 / 暂停 / 下一首", () -> showMedia(this, false));
         button(list, "倒计时 · 60 秒", this::showTimer);
         button(list, "来电 · 接听 / 拒接", this::showCall);
@@ -135,7 +135,7 @@ public class MainActivity extends Activity {
     }
     private void showProgress(int step, int notificationId) {
         int run = step == 1 ? ++fineProgressRun : ++progressRun;
-        long intervalMs = step == 1 ? 250L : 1000L;
+        long intervalMs = 1000L;
         Notification.Builder builder = base(this, step == 1 ? "精细下载演示" : "文件下载演示", "已完成 0%")
                 .setOnlyAlertOnce(true);
         Runnable update = new Runnable() {
