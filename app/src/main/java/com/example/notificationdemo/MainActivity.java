@@ -20,6 +20,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.view.View;
 import android.view.WindowInsetsController;
 import android.widget.Button;
@@ -79,7 +80,7 @@ public class MainActivity extends Activity {
         iconHint.setPadding(0, 0, 0, dp(14));
         list.addView(iconHint);
         button(list, "进度条 · 每次增加 10%", () -> showProgress(10, PROGRESS));
-        button(list, "进度条 · 每次增加 1%", () -> showProgress(1, PROGRESS_FINE));
+        button(list, "进度条 · 1% 步进（约 25 秒）", () -> showProgress(1, PROGRESS_FINE));
         button(list, "播放器 · 播放 / 暂停 / 下一首", () -> showMedia(this, false));
         button(list, "倒计时 · 60 秒", this::showTimer);
         button(list, "来电 · 接听 / 拒接", this::showCall);
@@ -134,17 +135,25 @@ public class MainActivity extends Activity {
     }
     private void showProgress(int step, int notificationId) {
         int run = step == 1 ? ++fineProgressRun : ++progressRun;
-        for (int value = 0; value <= 100; value += step) {
-            final int v = value;
-            handler.postDelayed(() -> {
+        long intervalMs = step == 1 ? 250L : 1000L;
+        Notification.Builder builder = base(this, step == 1 ? "精细下载演示" : "文件下载演示", "已完成 0%")
+                .setOnlyAlertOnce(true);
+        Runnable update = new Runnable() {
+            int value;
+            @Override public void run() {
                 if (run != (step == 1 ? fineProgressRun : progressRun)) return;
-                Notification.Builder b = base(this, step == 1 ? "精细下载演示" : "文件下载演示",
-                        v == 100 ? "下载完成" : "已完成 " + v + "%")
-                        .setProgress(100, v, false).setOnlyAlertOnce(true);
-                if (v < 100) b.setOngoing(true); else b.setProgress(0, 0, false);
-                post(this, notificationId, b.build());
-            }, value * 100L);
-        }
+                long nextAt = SystemClock.uptimeMillis() + intervalMs;
+                builder.setContentText(value == 100 ? "下载完成" : "已完成 " + value + "%")
+                        .setProgress(100, value, false).setOngoing(value < 100);
+                if (value == 100) builder.setProgress(0, 0, false);
+                post(MainActivity.this, notificationId, builder.build());
+                if (value < 100) {
+                    value += step;
+                    handler.postAtTime(this, nextAt);
+                }
+            }
+        };
+        update.run();
     }
     static void showMedia(Context c, boolean toggle) {
         if (toggle) playing = !playing; else playing = true;
