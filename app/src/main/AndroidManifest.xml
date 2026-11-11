@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <application android:label="通知实验室" android:icon="@drawable/ic_launcher"
         android:theme="@style/Theme.NotificationDemo" android:allowBackup="false">
         <activity android:name=".MainActivity" android:exported="true">
@@ -10,5 +12,10 @@
             </intent-filter>
         </activity>
         <receiver android:name=".DemoReceiver" android:exported="false" />
+        <service android:name=".FineProgressService" android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-started one-percent notification progress demonstration" />
+        </service>
     </application>
 </manifest>
